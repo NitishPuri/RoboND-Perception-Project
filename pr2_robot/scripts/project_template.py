@@ -74,20 +74,29 @@ def pcl_callback(pcl_msg):
     
     print("Vox grid Downsampled point cloud of length ,... {}".format(cloud_filtered.size))
 
-    # TODO: PassThrough Filter
+    # TODO: PassThrough Filter on 'z'
     passthrough = cloud_filtered.make_passthrough_filter()
     filter_axis = 'z'
     passthrough.set_filter_field_name(filter_axis)
-    axis_min = 0.46
+    axis_min = 0.60
     axis_max = 1.0
     passthrough.set_filter_limits(axis_min, axis_max)
     cloud_filtered = passthrough.filter()
 
+    print("Passthrough filter applied on z({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, cloud_filtered.size))
+    
+    # Passthrough filter on 'y'
+    passthrough = cloud_filtered.make_passthrough_filter()
+    filter_axis = 'y'
+    passthrough.set_filter_field_name(filter_axis)
+    axis_min = -0.5
+    axis_max = 0.5
+    passthrough.set_filter_limits(axis_min, axis_max)
+    cloud_filtered = passthrough.filter()
+    
     ros_temp_points = pcl_to_ros(cloud_filtered)
     passthrough_pub.publish(ros_temp_points)
-    print("Passthrough filter applied on z({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, cloud_filtered.size))
-#    return    
-#    print("this should not get printed")
+    print("Passthrough filter applied on y({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, cloud_filtered.size))
     
     # TODO: RANSAC Plane Segmentation
     seg = cloud_filtered.make_segmenter()
@@ -98,7 +107,7 @@ def pcl_callback(pcl_msg):
     seg.set_distance_threshold(max_distance)
     inliers, coefficients = seg.segment()
     
-    print("\nRANSAC Place Segmentation,.. \n")
+    print("RANSAC Place Segmentation,.....")
 
     # TODO: Extract inliers and outliers
     cloud_table = cloud_filtered.extract(inliers, negative=False)
@@ -143,14 +152,13 @@ def pcl_callback(pcl_msg):
     # TODO: Convert PCL data to ROS messages
     ros_cloud_objects = pcl_to_ros(cloud_objects)
     ros_cloud_table = pcl_to_ros(cloud_table)
-
     ros_cluster_cloud = pcl_to_ros(cluster_cloud)   
 
     # TODO: Publish ROS messages
     pcl_objects_pub.publish(ros_cloud_objects)
     pcl_table_pub.publish(ros_cloud_table)
-#    pcl_cluster_pub.publish(ros_cluster_cloud)
-    return
+    pcl_cluster_pub.publish(ros_cluster_cloud)
+#    return
 
 # Exercise-3 TODOs:
 
@@ -200,10 +208,10 @@ def pcl_callback(pcl_msg):
     # Suggested location for where to invoke your pr2_mover() function within pcl_callback()
     # Could add some logic to determine whether or not your object detections are robust
     # before calling pr2_mover()
-    try:
-        pr2_mover(detected_objects)
-    except rospy.ROSInterruptException:
-        pass
+#    try:
+#        pr2_mover(detected_objects)
+#    except rospy.ROSInterruptException:
+#        pass
 
 # function to load parameters and request PickPlace service
 def pr2_mover(object_list):
