@@ -51,12 +51,20 @@ def pcl_callback(pcl_msg):
 
 #    passthrough_pub.publish(pcl_msg)
 #    pass
-
+    print("\nReceived pcl_callback,...")
 # Exercise-2 TODOs:
 
     # TODO: Convert ROS msg to PCL data
     pcl_cloud = ros_to_pcl(pcl_msg)
+    print("No. of points in received cloud : {}".format(pcl_cloud.size))
 
+    # Removing outliers,..
+#    sof = pcl_cloud.make_statistical_outlier_filter()
+#    sof.set_mean_k(50)
+#    sof.set_std_dev_mul_thresh(1.0)
+#    pcl_cloud = sof.filter()
+#    print("No. of points after removing outliers,.. {}".format(pcl_cloud.size))    
+        
     # TODO: Voxel Grid Downsampling
     vox = pcl_cloud.make_voxel_grid_filter()
 
@@ -64,19 +72,23 @@ def pcl_callback(pcl_msg):
     vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
     cloud_filtered = vox.filter()
     
-    ros_temp_points = pcl_to_ros(cloud_filtered)
-    passthrough_pub.publish(ros_temp_points)
-    pass
+    print("Vox grid Downsampled point cloud of length ,... {}".format(cloud_filtered.size))
 
     # TODO: PassThrough Filter
     passthrough = cloud_filtered.make_passthrough_filter()
     filter_axis = 'z'
     passthrough.set_filter_field_name(filter_axis)
-    axis_min = 0.77
-    axis_max = 1.1
+    axis_min = 0.46
+    axis_max = 1.0
     passthrough.set_filter_limits(axis_min, axis_max)
     cloud_filtered = passthrough.filter()
 
+    ros_temp_points = pcl_to_ros(cloud_filtered)
+    passthrough_pub.publish(ros_temp_points)
+    print("Passthrough filter applied on z({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, cloud_filtered.size))
+#    return    
+#    print("this should not get printed")
+    
     # TODO: RANSAC Plane Segmentation
     seg = cloud_filtered.make_segmenter()
     seg.set_model_type(pcl.SACMODEL_PLANE)
@@ -85,11 +97,17 @@ def pcl_callback(pcl_msg):
     max_distance = 0.01
     seg.set_distance_threshold(max_distance)
     inliers, coefficients = seg.segment()
+    
+    print("\nRANSAC Place Segmentation,.. \n")
 
     # TODO: Extract inliers and outliers
     cloud_table = cloud_filtered.extract(inliers, negative=False)
     cloud_objects = cloud_filtered.extract(inliers, negative=True)
+    
+    print("Number of points in Table Cloud : {}".format(cloud_table.size))
+    print("Number of points in Objects Cloud : {}".format(cloud_objects.size))
 
+#    print
     # TODO: Euclidean Clustering
     white_cloud = XYZRGB_to_XYZ(cloud_objects)
     tree = white_cloud.make_kdtree()
@@ -129,9 +147,10 @@ def pcl_callback(pcl_msg):
     ros_cluster_cloud = pcl_to_ros(cluster_cloud)   
 
     # TODO: Publish ROS messages
-#    pcl_objects_pub.publish(ros_cloud_objects)
-#    pcl_table_pub.publish(ros_cloud_table)
+    pcl_objects_pub.publish(ros_cloud_objects)
+    pcl_table_pub.publish(ros_cloud_table)
 #    pcl_cluster_pub.publish(ros_cluster_cloud)
+    return
 
 # Exercise-3 TODOs:
 
@@ -228,13 +247,16 @@ def pr2_mover(object_list):
 if __name__ == '__main__':
 
     # TODO: ROS node initialization
+    print("ROS node initialization")
     rospy.init_node('clustering', anonymous=True)
 
     # TODO: Create Subscribers
+    print("Create Subscribers")
 #    pcl_sub = rospy.Subscriber("/sensor_stick/point_cloud", pc2.PointCloud2, pcl_callback, queue_size=1)
     pcl_sub = rospy.Subscriber("/pr2/world/points", pc2.PointCloud2, pcl_callback, queue_size=1)
 
     # TODO: Create Publishers
+    print("Create Publishers")
     pcl_objects_pub = rospy.Publisher("/pcl_objects", PointCloud2, queue_size=1)
     pcl_table_pub = rospy.Publisher("/pcl_table", PointCloud2, queue_size=1)
     pcl_cluster_pub = rospy.Publisher("/pcl_cluster", PointCloud2, queue_size=1)
@@ -243,7 +265,9 @@ if __name__ == '__main__':
     passthrough_pub = rospy.Publisher("/received_points", PointCloud2, queue_size = 1)
 
     # TODO: Load Model From disk
-    trained_model = pickle.load(open('model.sav', 'rb'))
+    modelFileName = 'model.sav'
+    print("Load Model From disk, {}".format(modelFileName))
+    trained_model = pickle.load(open(modelFileName, 'rb'))
     clf = trained_model["classifier"]
     scaler = trained_model["scaler"]
     encoder = LabelEncoder()
@@ -253,5 +277,6 @@ if __name__ == '__main__':
     get_color_list.color_list = []
 
     # TODO: Spin while node is not shutdown
+    print("Start spinning,.......")
     while not rospy.is_shutdown():
         rospy.spin()        
