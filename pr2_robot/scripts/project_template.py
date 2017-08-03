@@ -46,91 +46,101 @@ def send_to_yaml(yaml_filename, dict_list):
     with open(yaml_filename, 'w') as outfile:
         yaml.dump(data_dict, outfile, default_flow_style=False)
 
-# Callback function for your Point Cloud Subscriber
-def pcl_callback(pcl_msg):
-
-#    passthrough_pub.publish(pcl_msg)
-#    pass
-    print("\nReceived pcl_callback,...")
-# Exercise-2 TODOs:
-
-    # TODO: Convert ROS msg to PCL data
-    pcl_cloud = ros_to_pcl(pcl_msg)
-    print("No. of points in received cloud : {}".format(pcl_cloud.size))
-
-    # Removing outliers,..
-#    sof = pcl_cloud.make_statistical_outlier_filter()
-#    sof.set_mean_k(50)
-#    sof.set_std_dev_mul_thresh(1.0)
-#    pcl_cloud = sof.filter()
-#    print("No. of points after removing outliers,.. {}".format(pcl_cloud.size))    
-        
-    # TODO: Voxel Grid Downsampling
-    vox = pcl_cloud.make_voxel_grid_filter()
-
-    LEAF_SIZE = 0.01
-    vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
-    cloud_filtered = vox.filter()
+# Helper function to perform Statistical Outlier removal on the input cloud 
+def remove_outliers(in_cloud):
+    fil = in_cloud.make_statistical_outlier_filter()
+    fil.set_mean_k(5)
+    fil.set_std_dev_mul_thresh(0.5)
+    out_cloud = fil.filter()
+    print("No. of points after outlier removal filtering,.. {}".format(out_cloud.size))
+#    pcl.save(out_cloud, "fil_inliers.pcd")
+    fil.set_negative(True)
+    pcl.save(fil.filter(), "fil_outliers.pcd")
     
-    print("Vox grid Downsampled point cloud of length ,... {}".format(cloud_filtered.size))
+    return out_cloud
+    
+# Helper function to perform Voxel Grid Downsampling on the input cloud
+def voxDownsampling(in_cloud):
+    vox = in_cloud.make_voxel_grid_filter()
+    LEAF_SIZE = 0.005
+    vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
+    out_cloud = vox.filter()
+#    pcl.save(out_cloud, "downsampledPoints.pcd")
+    print("Vox grid Downsampled point cloud of length ,... {}".format(out_cloud.size))
+    return out_cloud
 
-    # TODO: PassThrough Filter on 'z'
-    passthrough = cloud_filtered.make_passthrough_filter()
+# Helper function to perform Passthrough filter on the input, 
+# This filter is modeled to correctly passthrough only the relevant table and objects 
+def passthroughFilter(in_cloud):
+    passthrough = in_cloud.make_passthrough_filter()
     filter_axis = 'z'
     passthrough.set_filter_field_name(filter_axis)
     axis_min = 0.60
     axis_max = 1.0
     passthrough.set_filter_limits(axis_min, axis_max)
-    cloud_filtered = passthrough.filter()
-
-    print("Passthrough filter applied on z({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, cloud_filtered.size))
-    
+    out_cloud = passthrough.filter()
+    print("Passthrough filter applied on z({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, out_cloud.size))
     # Passthrough filter on 'y'
-    passthrough = cloud_filtered.make_passthrough_filter()
+    passthrough = out_cloud.make_passthrough_filter()
     filter_axis = 'y'
     passthrough.set_filter_field_name(filter_axis)
     axis_min = -0.5
     axis_max = 0.5
     passthrough.set_filter_limits(axis_min, axis_max)
-    cloud_filtered = passthrough.filter()
-    
-    ros_temp_points = pcl_to_ros(cloud_filtered)
-    passthrough_pub.publish(ros_temp_points)
-    print("Passthrough filter applied on y({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, cloud_filtered.size))
-    
-    # TODO: RANSAC Plane Segmentation
-    seg = cloud_filtered.make_segmenter()
+    out_cloud = passthrough.filter()
+    print("Passthrough filter applied on y({},{}),.. no. of points ,.. : {}".format(axis_min, axis_max, out_cloud.size))
+#    pcl.save(out_cloud, "passthrough.pcd")    
+    return out_cloud
+
+# Perform RANSAC filtering on the cloud to filter out the table and return the remaining objects
+def RansacFilter(in_cloud):
+    seg = in_cloud.make_segmenter()
     seg.set_model_type(pcl.SACMODEL_PLANE)
     seg.set_method_type(pcl.SAC_RANSAC)
 
     max_distance = 0.01
     seg.set_distance_threshold(max_distance)
     inliers, coefficients = seg.segment()
-    
+
     print("RANSAC Place Segmentation,.....")
 
     # TODO: Extract inliers and outliers
-    cloud_table = cloud_filtered.extract(inliers, negative=False)
-    cloud_objects = cloud_filtered.extract(inliers, negative=True)
-    
+    cloud_table = in_cloud.extract(inliers, negative=False)
+    cloud_objects = in_cloud.extract(inliers, negative=True)
+
     print("Number of points in Table Cloud : {}".format(cloud_table.size))
     print("Number of points in Objects Cloud : {}".format(cloud_objects.size))
 
-#    print
+    # Publish ROS messages    
+    ros_cloud_objects = pcl_to_ros(cloud_objects)
+    ros_cloud_table = pcl_to_ros(cloud_table)
+    pcl_objects_pub.publish(ros_cloud_objects)
+    pcl_table_pub.publish(ros_cloud_table)
+
+#    pcl.save(cloud_table, "table.pcd")
+#    pcl.save(cloud_objects, "objects.pcd")
+    
+    return cloud_objects
+
+
+
+# Cluster the points and return an colored cloud to visualize eacjh cluster properly
+def EuclideanClustering(in_cloud):
     # TODO: Euclidean Clustering
-    white_cloud = XYZRGB_to_XYZ(cloud_objects)
+    white_cloud = XYZRGB_to_XYZ(in_cloud)    
     tree = white_cloud.make_kdtree()
 
     # TODO: Create Cluster-Mask Point Cloud to visualize each cluster separately
     ec = white_cloud.make_EuclideanClusterExtraction()
-    ec.set_ClusterTolerance(0.05)
-    ec.set_MinClusterSize(50)
+    ec.set_ClusterTolerance(0.01)
+    ec.set_MinClusterSize(20)
     ec.set_MaxClusterSize(2000)
 
     ec.set_SearchMethod(tree)
     cluster_indices = ec.Extract()
 
     #Assign a color corresponding to each segmented object in scene ??????
+#    get_color_list.color_list = []
     cluster_color = get_color_list(len(cluster_indices))
 
     print ("Number of clusters : {}".format(len(cluster_indices)))
@@ -149,16 +159,48 @@ def pcl_callback(pcl_msg):
     cluster_cloud = pcl.PointCloud_PointXYZRGB()
     cluster_cloud.from_list(color_cluster_point_list)
 
-    # TODO: Convert PCL data to ROS messages
-    ros_cloud_objects = pcl_to_ros(cloud_objects)
-    ros_cloud_table = pcl_to_ros(cloud_table)
     ros_cluster_cloud = pcl_to_ros(cluster_cloud)   
 
     # TODO: Publish ROS messages
-    pcl_objects_pub.publish(ros_cloud_objects)
-    pcl_table_pub.publish(ros_cloud_table)
     pcl_cluster_pub.publish(ros_cluster_cloud)
+
+#    pcl.save(cluster_cloud, "clusters.pcd")
+    return cluster_indices
+
+
+# Callback function for your Point Cloud Subscriber
+def pcl_callback(pcl_msg):
+
+    print("\nReceived pcl_callback,...")
+# Exercise-2 TODOs:
+
+    # TODO: Convert ROS msg to PCL data
+    pcl_cloud = ros_to_pcl(pcl_msg)
+    print("No. of points in received cloud : {}".format(pcl_cloud.size))
+    
+    # Save the received cloud.,.
+#    pcl.save(pcl_cloud, "receivedPoints.pcd")    
+#    rospy.signal_shutdown("Task completed,..")    
 #    return
+    
+    # TODO: Voxel Grid Downsampling
+    cloud_filtered = voxDownsampling(pcl_cloud)
+    
+    # TODO: PassThrough Filter
+    cloud_filtered = passthroughFilter(cloud_filtered)
+        
+    # TODO: RANSAC Plane Segmentation
+    cloud_filtered = RansacFilter(cloud_filtered)
+
+    # Removing outliers,..
+    cloud_filtered_objects = remove_outliers(cloud_filtered)
+
+    ros_temp_points = pcl_to_ros(cloud_filtered_objects)
+    passthrough_pub.publish(ros_temp_points)
+
+#    print
+    # TODO: Euclidean Clustering
+    cluster_indices = EuclideanClustering(cloud_filtered_objects)
 
 # Exercise-3 TODOs:
 
@@ -169,7 +211,7 @@ def pcl_callback(pcl_msg):
     for index, pts_list in enumerate(cluster_indices):
 
         # Grab the points for the cluster
-        pcl_cluster = cloud_objects.extract(pts_list)
+        pcl_cluster = cloud_filtered_objects.extract(pts_list)
 
         # TODO: Convert the cluster from pcl to ROS using helper functions
         ros_cluster = pcl_to_ros(pcl_cluster)
@@ -189,7 +231,7 @@ def pcl_callback(pcl_msg):
         detected_objects_labels.append(label)
 
         # Publish a label into RViz
-        label_pos = list(white_cloud[pts_list[0]])
+        label_pos = list(cloud_filtered_objects[pts_list[0]])[0:3]
         label_pos[2] += .4
         object_markers_pub.publish(make_label(label,label_pos, index))
 
