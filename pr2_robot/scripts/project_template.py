@@ -262,13 +262,11 @@ def pr2_mover(object_list):
     pick_centroids = []
     
     test_scene_num = Int32()
-    test_scene_num.data = 1
-    
-    pick_list_num = 1
-    
+    test_scene_num.data = 2
+        
     dict_list = []
     
-    yaml_filename = "output{}_{}.yaml".format(test_scene_num.data, pick_list_num)
+    yaml_filename = "output_{}.yaml".format(test_scene_num.data)
     
     
     # TODO: Get/Read parameters
@@ -277,6 +275,7 @@ def pr2_mover(object_list):
     # TODO: Parse parameters into individual variables
 
     # TODO: Rotate PR2 in place to capture side tables for the collision map
+#    joint_publisher.publish()
 
 
     print("Iterating over objects in the pick list,...")
@@ -289,13 +288,13 @@ def pr2_mover(object_list):
         
         print("Looking for [[{}]] to be placed in [[{}]] box.".format(pick_object_name, pick_object_group))
         
-        object_name = String()
-        object_name.data = pick_object_name
+        object_name = String()   
+#        print(pick_object_name.__class__)     
+        object_name.data = str(pick_object_name)
         
         # Index of the object to be picked in the `detected_objects` list
         pick_object_index = None
         for i, detected_object in enumerate(object_list):
-            print("{} :: {} ".format(i, detected_object.label))
             if(detected_object.label == pick_object_name):
                 pick_object_index = i
                 break
@@ -316,9 +315,9 @@ def pr2_mover(object_list):
 
         # Create pick_pose for the object
         pick_pose = Pose()
-        pick_pose.position.x = pick_object_centroid[0]
-        pick_pose.position.y = pick_object_centroid[1]
-        pick_pose.position.z = pick_object_centroid[2]
+        pick_pose.position.x = float(pick_object_centroid[0])
+        pick_pose.position.y = float(pick_object_centroid[1])
+        pick_pose.position.z = float(pick_object_centroid[2])
 #        pick_pose.orientation = 
                                                 
         # TODO: Create 'place_pose' for the object
@@ -349,18 +348,18 @@ def pr2_mover(object_list):
         # Wait for 'pick_place_routine' service to come up
         rospy.wait_for_service('pick_place_routine')
 
-        try:
-            print("Creating service proxy,...")
-            pick_place_routine = rospy.ServiceProxy('pick_place_routine', PickPlace)
+#        try:
+#            print("Creating service proxy,...")
+#            pick_place_routine = rospy.ServiceProxy('pick_place_routine', PickPlace)
 
-            # TODO: Insert your message variables to be sent as a service request
-            print("Requesting for service reponse,...")
-            resp = pick_place_routine(test_scene_num, object_name, arm_name, pick_pose, place_pose)
+#            # TODO: Insert your message variables to be sent as a service request
+#            print("Requesting for service reponse,...")
+#            resp = pick_place_routine(test_scene_num, object_name, arm_name, pick_pose, place_pose)
 
-            print ("Response: ",resp.success)
+#            print ("Response: ",resp.success)
 
-        except rospy.ServiceException, e:
-            print "Service call failed: %s"%e
+#        except rospy.ServiceException, e:
+#            print "Service call failed: %s"%e
 
     # TODO: Output your request parameters into output yaml file
     send_to_yaml(yaml_filename, dict_list)
@@ -386,6 +385,8 @@ if __name__ == '__main__':
     object_markers_pub = rospy.Publisher("/object_markers", Marker, queue_size = 1)
     detected_objects_pub = rospy.Publisher("/detected_objects", DetectedObjectsArray, queue_size = 1)
     passthrough_pub = rospy.Publisher("/received_points", PointCloud2, queue_size = 1)
+    joint_publisher = rospy.Publisher('/pr2/world_joint_controller/command',
+                             Float64, queue_size=10)
 
     # TODO: Load Model From disk
     modelFileName = 'model.sav'
