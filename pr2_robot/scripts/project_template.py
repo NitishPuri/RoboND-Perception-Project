@@ -25,6 +25,9 @@ from rospy_message_converter import message_converter
 import yaml
 
 
+# A list to keep track of objects that have succesfully been picked and placed.
+picked_objects = []
+
 # Helper function to get surface normals
 def get_normals(cloud):
     get_normals_prox = rospy.ServiceProxy('/feature_extractor/get_normals', GetNormals)
@@ -120,7 +123,7 @@ def RansacFilter(in_cloud):
 #    pcl.save(cloud_table, "table.pcd")
 #    pcl.save(cloud_objects, "objects.pcd")
     
-    return cloud_objects
+    return cloud_objects, cloud_table
 
 
 
@@ -167,6 +170,11 @@ def EuclideanClustering(in_cloud):
 #    pcl.save(cluster_cloud, "clusters.pcd")
     return cluster_indices
 
+def AddClouds(cloudA, cloudB):
+    cloudC = cloudA.__class__()
+    cloudC.from_list(cloudA.to_list() + cloudB.to_list())
+    return cloudC
+
 
 # Callback function for your Point Cloud Subscriber
 def pcl_callback(pcl_msg):
@@ -189,14 +197,14 @@ def pcl_callback(pcl_msg):
     # TODO: PassThrough Filter
     cloud_filtered = passthroughFilter(cloud_filtered)
         
+    # TODO: Statistical Filter,..
+    cloud_filtered = remove_outliers(cloud_filtered)
+    
     # TODO: RANSAC Plane Segmentation
-    cloud_filtered = RansacFilter(cloud_filtered)
+    cloud_filtered_objects, cloud_table = RansacFilter(cloud_filtered)
 
-    # Removing outliers,..
-    cloud_filtered_objects = remove_outliers(cloud_filtered)
-
-    ros_temp_points = pcl_to_ros(cloud_filtered_objects)
-    passthrough_pub.publish(ros_temp_points)
+#    ros_temp_points = pcl_to_ros(cloud_filtered)
+#    passthrough_pub.publish(ros_temp_points)
 
 #    print
     # TODO: Euclidean Clustering
@@ -250,19 +258,23 @@ def pcl_callback(pcl_msg):
     # Could add some logic to determine whether or not your object detections are robust
     # before calling pr2_mover()
     try:
-        pr2_mover(detected_objects)
+        pr2_mover(detected_objects, cloud_table)
     except rospy.ROSInterruptException:
         pass
 
+#    rospy.signal_shutdown("Task completed,..")    
+    return
+
+
 # function to load parameters and request PickPlace service
-def pr2_mover(object_list):
+def pr2_mover(object_list, cloud_table):
 
     # TODO: Initialize variables
     pick_labels = []
     pick_centroids = []
     
     test_scene_num = Int32()
-    test_scene_num.data = 2
+    test_scene_num.data = 1
         
     dict_list = []
     
@@ -288,24 +300,34 @@ def pr2_mover(object_list):
         
         print("Looking for [[{}]] to be placed in [[{}]] box.".format(pick_object_name, pick_object_group))
         
+#        if(picked_objects.find(pick_object_name)):
+#            print(":: {} :: has already been picked, moving on,.. ".format(pick_object_name))
+#            continue
+        
         object_name = String()   
 #        print(pick_object_name.__class__)     
         object_name.data = str(pick_object_name)
         
+        # Create a collision cloud that contains the table and all the detected objects except the object to be picked.!!
+        collision_cloud = cloud_table
+
         # Index of the object to be picked in the `detected_objects` list
-        pick_object_index = None
+        pick_object_cloud = None
         for i, detected_object in enumerate(object_list):
             if(detected_object.label == pick_object_name):
-                pick_object_index = i
-                break
+                pick_object_cloud = detected_object.cloud
+            else:
+                collision_cloud = AddClouds(collision_cloud, ros_to_pcl(detected_object.cloud))
             
-        if(pick_object_index == None):
+        if(pick_object_cloud == None):
             print("ERROR:::: {} not found in the detected object list".format(pick_object_name))
             continue
+                            
+                            
+        # Publish the collision cloud
+        collision_pub.publish(pcl_to_ros(collision_cloud))
             
-#        print("Found object at index {}".format(pick_object_index))
-        
-        points_arr = ros_to_pcl(object_list[pick_object_index].cloud).to_array()
+        points_arr = ros_to_pcl(pick_object_cloud).to_array()
 #        print("Converted to array...")
         pick_object_centroid = np.mean(points_arr, axis=0)[:3] 
         print("Centroid found : {}".format(pick_object_centroid))
@@ -348,18 +370,19 @@ def pr2_mover(object_list):
         # Wait for 'pick_place_routine' service to come up
         rospy.wait_for_service('pick_place_routine')
 
-#        try:
-#            print("Creating service proxy,...")
-#            pick_place_routine = rospy.ServiceProxy('pick_place_routine', PickPlace)
+        try:
+            print("Creating service proxy,...")
+            pick_place_routine = rospy.ServiceProxy('pick_place_routine', PickPlace)
 
-#            # TODO: Insert your message variables to be sent as a service request
-#            print("Requesting for service reponse,...")
-#            resp = pick_place_routine(test_scene_num, object_name, arm_name, pick_pose, place_pose)
+            # TODO: Insert your message variables to be sent as a service request
+            print("Requesting for service reponse,...")
+            resp = pick_place_routine(test_scene_num, object_name, arm_name, pick_pose, place_pose)
 
-#            print ("Response: ",resp.success)
+            print ("Response: ",resp.success)
+            picked_objects.append(pick_object_name)
 
-#        except rospy.ServiceException, e:
-#            print "Service call failed: %s"%e
+        except rospy.ServiceException, e:
+            print "Service call failed: %s"%e
 
     # TODO: Output your request parameters into output yaml file
     send_to_yaml(yaml_filename, dict_list)
@@ -385,11 +408,12 @@ if __name__ == '__main__':
     object_markers_pub = rospy.Publisher("/object_markers", Marker, queue_size = 1)
     detected_objects_pub = rospy.Publisher("/detected_objects", DetectedObjectsArray, queue_size = 1)
     passthrough_pub = rospy.Publisher("/received_points", PointCloud2, queue_size = 1)
+    collision_pub = rospy.Publisher("/pr2/3D_map/points", PointCloud2, queue_size = 1)
     joint_publisher = rospy.Publisher('/pr2/world_joint_controller/command',
                              Float64, queue_size=10)
 
     # TODO: Load Model From disk
-    modelFileName = 'model.sav'
+    modelFileName = 'model-15.sav'
     print("Load Model From disk, {}".format(modelFileName))
     trained_model = pickle.load(open(modelFileName, 'rb'))
     clf = trained_model["classifier"]
