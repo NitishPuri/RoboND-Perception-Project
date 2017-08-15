@@ -53,19 +53,79 @@ prediction = clf.predict(scaler.transform(feature.reshape(1,-1)))
 label = encoder.inverse_transform(prediction)[0]
 ```
 
-So, we get the following result when running
-![demo-1](images/obj_recognition.png)
+Here are the methods used for histogram computation,
+```python
+def compute_color_histograms(cloud, using_hsv=False):
+
+    # Compute histograms for the clusters
+    point_colors_list = []
+
+    # Step through each point in the point cloud
+    for point in pc2.read_points(cloud, skip_nans=True):
+        rgb_list = float_to_rgb(point[3])
+        if using_hsv:
+            point_colors_list.append(rgb_to_hsv(rgb_list) * 255)
+        else:
+            point_colors_list.append(rgb_list)
+            
+    # Populate lists with color values
+    channel_1_vals = []
+    channel_2_vals = []
+    channel_3_vals = []
+
+    for color in point_colors_list:
+        channel_1_vals.append(color[0])
+        channel_2_vals.append(color[1])
+        channel_3_vals.append(color[2])
+    
+    nbins = 32
+    bins_range = (0, 256)            
+        
+    # TODO: Compute histograms
+    hist_1 = np.histogram(channel_1_vals, bins=nbins, range=bins_range)
+    hist_2 = np.histogram(channel_2_vals, bins=nbins, range=bins_range)
+    hist_3 = np.histogram(channel_3_vals, bins=nbins, range=bins_range)
 
 
+    # TODO: Concatenate and normalize the histograms
+    hist_features = np.concatenate((hist_1[0], hist_2[0], hist_3[0])).astype(np.float64)
 
+    norm_features = hist_features*1.0 / np.sum(hist_features)
+     
+    return norm_features 
 
-Here's | A | Snappy | Table
---- | --- | --- | ---
-1 | `highlight` | **bold** | 7.41
-2 | a | b | c
-3 | *italic* | text | 403
-4 | 2 | 3 | abcd
+def compute_normal_histograms(normal_cloud):
+    norm_x_vals = []
+    norm_y_vals = []
+    norm_z_vals = []
 
+    for norm_component in pc2.read_points(normal_cloud,
+                                          field_names = ('normal_x', 'normal_y', 'normal_z'),
+                                          skip_nans=True):
+        norm_x_vals.append(norm_component[0])
+        norm_y_vals.append(norm_component[1])
+        norm_z_vals.append(norm_component[2])
+        
+    # TODO: Compute histograms of normal values (just like with color)
+    nbins = 32
+    bins_range = (-1, 1)
+    hist_1 = np.histogram(norm_x_vals, bins=nbins, range=bins_range)
+    hist_2 = np.histogram(norm_y_vals, bins=nbins, range=bins_range)
+    hist_3 = np.histogram(norm_z_vals, bins=nbins, range=bins_range)
+
+    # TODO: Concatenate and normalize the histograms
+    hist_features = np.concatenate((hist_1[0], hist_2[0], hist_3[0])).astype(np.float64)
+
+    norm_features = hist_features*1.0 / np.sum(hist_features)
+
+    return norm_features
+```
+
+So, we get the following result when running with the above parameters on the Exercise world.
+![obj_recognition](images/obj_recognition.png)
+
+And, this is the confusion matrix that we get by using 500 poses for each of the objects used in `pick_list_*.yaml` files.
+![norm_conf](images/norm_conf.png)
 
 ### Pick and Place Setup
 
