@@ -142,7 +142,15 @@ Firstly, here are the results from running object recognition pipeline on the th
 **World 3 output**
 ![world3](images/world3.png)
 
-Spend some time at the end to discuss your code, what techniques you used, what worked and why, where the implementation might fail and how you might improve it if you were going to pursue this project further.  
+To get the above results here are some of the high level steps that i followed:
+- Created separate Filter functions for all of the filters that take in an `in_cloud`, apply the corresponding filter based on pre defined parameters, optionally dump the filtered cloud and return the filtered cloud. This helped me test various configurations of the filters easily, specifically i tried to apply the statistical outlier removal at different times in the pipeline, and this really helped.
+- For the training part, I started with 10 poses per object, which wasn't very good, then I increased it to use 15 poses per object. This actually gave good result (~83%), without any tweekings to the SVM parameters. However, just to see how much accuracy i can acheive with more data, I ran the training data for 500 iterations per object.
+- I Also faced issues while creating the yaml messages with data type mismatch. This was resolved by typecasting the relavant numpy arrays to python lists.
+- Also tried to implement the challenge part, starting with publishing the collision cloud. For this i merged the `table` with all the objects except the object that the arm needs to pick and published this cloud to `/pr2/3D_map/points` topic.  
+- Implemented a function `AddCloud` that takes in two pcl clouds and accumulates them. This helped in implementing the collision cluster.
+- So with the current code the arm is able to pick up the objects place them in the relavant box, however i am facing an issue where the the gripper is not properly closing in on the object while picking up. Here is a video link showing the same on the first world.
+- Not sure how would rotating the robot head initially help in constructing the collision cloud, as currently i am creating the cloud by accumulating the detected objects. 
+- Still trying to improve the code and collision cloud, would appreciate if i can get feedback on the challenge tasks as well.
 
 
 
