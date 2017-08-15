@@ -150,7 +150,9 @@ To get the above results here are some of the high level steps that i followed:
 - Implemented a function `AddCloud` that takes in two pcl clouds and accumulates them. This helped in implementing the collision cluster.
 - So with the current code the arm is able to pick up the objects place them in the relavant box, however i am facing an issue where the the gripper is not properly closing in on the object while picking up. Here is a video link showing the same on the first world.
 - Not sure how would rotating the robot head initially help in constructing the collision cloud, as currently i am creating the cloud by accumulating the detected objects. 
-- Still trying to improve the code and collision cloud, would appreciate if i can get feedback on the challenge tasks as well.
+- Still trying to improve the code and collision cloud, would appreciate if i can get feedback on the challenge tasks as well.\\
+
+**Click to see the World 1 test video on youtube**
 [![vid](https://img.youtube.com/vi/JHN3Tkpb_Bw/hqdefault.jpg)](https://youtu.be/JHN3Tkpb_Bw)
 
 
