@@ -152,7 +152,8 @@ To get the above results here are some of the high level steps that i followed:
 - Not sure how would rotating the robot head initially help in constructing the collision cloud, as currently i am creating the cloud by accumulating the detected objects. 
 - Still trying to improve the code and collision cloud, would appreciate if i can get feedback on the challenge tasks as well.\\
 
-**Click to see the World 1 test video on youtube**
+**Click to see the World 1 test video on youtube**   
+
 [![vid](https://img.youtube.com/vi/JHN3Tkpb_Bw/hqdefault.jpg)](https://youtu.be/JHN3Tkpb_Bw)
 
 
