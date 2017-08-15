@@ -124,15 +124,23 @@ def compute_normal_histograms(normal_cloud):
 So, we get the following result when running with the above parameters on the Exercise world.
 ![obj_recognition](images/obj_recognition.png)
 
-And, this is the confusion matrix that we get by using 500 poses for each of the objects used in `pick_list_*.yaml` files.
+And, this is the confusion matrix that we get by using **500** poses for each of the objects used in `pick_list_*.yaml` files.
 ![norm_conf](images/norm_conf.png)
 
 ### Pick and Place Setup
 
 #### 1. For all three tabletop setups (`test*.world`), perform object recognition, then read in respective pick list (`pick_list_*.yaml`). Next construct the messages that would comprise a valid `PickPlace` request output them to `.yaml` format.
+Firstly, here are the results from running object recognition pipeline on the three worlds.
 
-And here's another image! 
-![demo-2](https://user-images.githubusercontent.com/20687560/28748286-9f65680e-7468-11e7-83dc-f1a32380b89c.png)
+**World 1 output**
+![world1](images/world1.png)
+
+
+**World 2 output**
+![world2](images/world2.png)
+
+**World 3 output**
+![world3](images/world3.png)
 
 Spend some time at the end to discuss your code, what techniques you used, what worked and why, where the implementation might fail and how you might improve it if you were going to pursue this project further.  
 
