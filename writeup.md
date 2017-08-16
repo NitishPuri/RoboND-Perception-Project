@@ -142,6 +142,8 @@ Firstly, here are the results from running object recognition pipeline on the th
 **World 3 output**
 ![world3](images/world3.png)
 
+**Note :** *Added [`features.py`](pr2_robot/scripts/features.py) and [`capture_features.py`](pr2_robot/scripts/capture_features.py)*
+
 To get the above results here are some of the high level steps that i followed:
 - Created separate Filter functions for all of the filters that take in an `in_cloud`, apply the corresponding filter based on pre defined parameters, optionally dump the filtered cloud and return the filtered cloud. This helped me test various configurations of the filters easily, specifically i tried to apply the statistical outlier removal at different times in the pipeline, and this really helped.
 - For the training part, I started with 10 poses per object, which wasn't very good, then I increased it to use 15 poses per object. This actually gave good result (~83%), without any tweekings to the SVM parameters. However, just to see how much accuracy i can acheive with more data, I ran the training data for 500 iterations per object.
