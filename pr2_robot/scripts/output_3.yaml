@@ -1,6 +1,6 @@
 object_list:
-- arm_name: sticky_notes
-  object_name: left
+- arm_name: left
+  object_name: sticky_notes
   pick_pose:
     orientation:
       w: 0.0
@@ -22,8 +22,8 @@ object_list:
       y: 0.71
       z: 0.605
   test_scene_num: 3
-- arm_name: book
-  object_name: left
+- arm_name: left
+  object_name: book
   pick_pose:
     orientation:
       w: 0.0
@@ -45,8 +45,8 @@ object_list:
       y: 0.71
       z: 0.605
   test_scene_num: 3
-- arm_name: snacks
-  object_name: right
+- arm_name: right
+  object_name: snacks
   pick_pose:
     orientation:
       w: 0.0
@@ -68,8 +68,8 @@ object_list:
       y: -0.71
       z: 0.605
   test_scene_num: 3
-- arm_name: biscuits
-  object_name: right
+- arm_name: right
+  object_name: biscuits
   pick_pose:
     orientation:
       w: 0.0
@@ -91,8 +91,8 @@ object_list:
       y: -0.71
       z: 0.605
   test_scene_num: 3
-- arm_name: eraser
-  object_name: left
+- arm_name: left
+  object_name: eraser
   pick_pose:
     orientation:
       w: 0.0
@@ -114,8 +114,8 @@ object_list:
       y: 0.71
       z: 0.605
   test_scene_num: 3
-- arm_name: soap2
-  object_name: right
+- arm_name: right
+  object_name: soap2
   pick_pose:
     orientation:
       w: 0.0
@@ -137,8 +137,8 @@ object_list:
       y: -0.71
       z: 0.605
   test_scene_num: 3
-- arm_name: soap
-  object_name: right
+- arm_name: right
+  object_name: soap
   pick_pose:
     orientation:
       w: 0.0
