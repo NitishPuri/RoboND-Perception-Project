@@ -363,7 +363,7 @@ def pr2_mover(object_list, cloud_table):
             arm_name.data = 'left'
                     
         # TODO: Create a list of dictionaries (made with make_yaml_dict()) for later output to yaml format
-        yaml_dict = make_yaml_dict(test_scene_num, object_name, arm_name, pick_pose, place_pose)
+        yaml_dict = make_yaml_dict(test_scene_num, arm_name, object_name, pick_pose, place_pose)
         
         dict_list.append(yaml_dict)
         
@@ -413,7 +413,7 @@ if __name__ == '__main__':
                              Float64, queue_size=10)
 
     # TODO: Load Model From disk
-    modelFileName = 'model-15.sav'
+    modelFileName = 'model.sav'
     print("Load Model From disk, {}".format(modelFileName))
     trained_model = pickle.load(open(modelFileName, 'rb'))
     clf = trained_model["classifier"]
